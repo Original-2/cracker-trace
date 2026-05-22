@@ -281,29 +281,33 @@ int main() {
         }
     }
 
+    // Random generator
     std::mt19937 rng(1234);
     std::uniform_real_distribution<double> dist(0.0, 1.0);
 
+    // Render
     std::vector<uint8_t> image(width * height * 3, 0);
 
     for (int y = 0; y < height; ++y) {
         for (int x = 0; x < width; ++x) {
             Vector3 pixelColor(0,0,0);
             for (int s = 0; s < spp; ++s) {
-                double u = x / width;
-                double v = y / height;
+                double jitterX = dist(rng);
+                double jitterY = dist(rng);
+                double u = (x + jitterX) / width;
+                double v = (y + jitterY) / height;
                 Vector3 dir = cam.getRayDir(u, v);
                 HitInfo hit = intersectScene(cam.pos, dir, triangles);
                 if (!hit.hit) continue;
 
                 const Material &hitMat = materials[triangles[hit.triIdx].materialIdx];
-                // Directly emit if hitting light - ONLY VALID IF PRIMARY RAY - ONLY EMMISSIVE OR NOT (NOT BOTH)
+                // Directly emit if hitting light - CANNOT USE ON NON PRIMARY RAYS
                 if (hitMat.emission.x > 0 || hitMat.emission.y > 0 || hitMat.emission.z > 0) {
                     pixelColor = pixelColor + hitMat.emission;
                     continue;
                 }
 
-                // NEE: sample all lights
+                // Next Event Estimation: sample all lights - FINE FOR ALL RAYS
                 Vector3 direct(0,0,0);
                 for (const LightTri &light : lights) {
                     for (int ls = 0; ls < lightSamples; ++ls) {
@@ -312,8 +316,6 @@ int main() {
                             triangles[light.triIdx].v0,
                             triangles[light.triIdx].v1,
                             triangles[light.triIdx].v2, u1, u2);
-
-
                         Vector3 toLight = lightPoint - hit.point;
                         double dist2 = toLight.lengthSquared();
                         double distL = std::sqrt(dist2);
@@ -336,10 +338,10 @@ int main() {
                         direct = direct + contrib;
                     }
                 }
-                direct = direct / lightSamples;
+                direct = direct / (double)lightSamples;
                 pixelColor = pixelColor + direct;
             }
-            pixelColor = pixelColor / spp;
+            pixelColor = pixelColor / (double)spp;
 
             int idx = (y * width + x) * 3;
             image[idx+0] = (uint8_t)(std::min(1.0, pixelColor.x) * 255);
