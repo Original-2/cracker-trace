@@ -292,10 +292,8 @@ int main() {
         for (int x = 0; x < width; ++x) {
             Vector3 pixelColor(0,0,0);
             for (int s = 0; s < spp; ++s) {
-                double jitterX = dist(rng);
-                double jitterY = dist(rng);
-                double u = (x + jitterX) / width;
-                double v = (y + jitterY) / height;
+                double u = (double)x / (double)width;
+                double v = (double)y / (double)height;
                 Vector3 dir = cam.getRayDir(u, v);
                 HitInfo hit = intersectScene(cam.pos, dir, triangles);
                 if (!hit.hit) continue;
